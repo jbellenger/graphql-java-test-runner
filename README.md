@@ -11,15 +11,6 @@ This is a test runner application to measure the performance of [GraphQL](https:
 
 ### Terraform and GCP project Setup
 
-This project uses terraform to manage testing infrastructure in GCP.
-
-1. Cloud Tasks Queue.
-1. Workflow.
-1. Compute Engine.
-1. Firestore.
-
-Setup: 
-
   1. Install terraform from [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
   1. Create a new gcp project.
   1. Add a billing account to the above created project.
@@ -34,10 +25,9 @@ Setup:
      The Owner (rather than Editor) role is required to create the firestore that holds test results.
   1. In the terraform directory, run:
   
-    ```
     $ terraform init
     $ terraform apply
-    ```
+  
 
 Terraform will create all the permanent infrastructure required by the test runner. This infra fits within the GCP 
 free tier and can run forever.
