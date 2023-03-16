@@ -327,10 +327,6 @@ export default function Dashboard() {
             <Typography variant="h7" sx={{ color: 'gray', left: '3%', position: 'absolute' }}>
               <b>v1.0</b>
             </Typography>
-
-            <Typography variant="h7" sx={{ color: 'gray', right: '3%', position: 'absolute' }}>
-              Created by Twitter, Inc.
-            </Typography>
           </Box>
         </div>
       )}

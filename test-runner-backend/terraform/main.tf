@@ -8,12 +8,13 @@ terraform {
 
 locals {
   cred  = file("cred.json")
-  email = lookup(jsondecode(local.cred), "client_email")
+  project_id = jsondecode(local.cred).project_id
+  email = jsondecode(local.cred).client_email
 }
 
 provider "google" {
   credentials = local.cred
-  project     = var.project_id
+  project     = local.project_id
   region      = var.region
   zone        = "us-central1-c"
 }
@@ -32,7 +33,7 @@ resource "google_workflows_workflow" "test_runner_workflow" {
 # Define and deploy a tasks queue
 # Queue should not be named the same as any other queue created 7 days before within the same GCP account. It will throw an error.
 resource "google_cloud_tasks_queue" "test_runner_tasks_queue" {
-  name     = "test-runner-tasks-queue-v2"
+  name     = "test-runner-tasks-queue-v3"
   location = var.region
 
   rate_limits {
@@ -51,7 +52,7 @@ resource "google_cloud_tasks_queue" "test_runner_tasks_queue" {
 # If terraform apply is called multiple times for the same project it's ok to get the below error for firestore.
 # Error 409: This application already exists and cannot be re-created.
 resource "google_app_engine_application" "firestore" {
-  project       = var.project_id
+  project       = local.project_id
   location_id   = "us-central"
   database_type = "CLOUD_FIRESTORE"
 
@@ -60,7 +61,7 @@ resource "google_app_engine_application" "firestore" {
 
 # Create a firewall rule to allow http communication to compute instance.
 resource "google_compute_firewall" "rules" {
-  project     = var.project_id
+  project     = local.project_id
   name        = "allow-http-firewall-rule-v2"
   network     = "default"
   description = "Creates firewall rule targeting tagged instances"
