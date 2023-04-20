@@ -8,17 +8,17 @@
 
 # GraphQL Java Test Runner
 
-This project provides a system for running the graphql-java benchmark suite, durably record the result, and a web-based
-tool for a human to analyze the result of multiple test runs.
+This project provides a system for running the graphql-java benchmark suite, durably record the test results, and a web-based
+tool for a human to analyze results of multiple test runs.
 
-The comnpute infrastructure used by this system can be divided into 2 categories:
+The compute infrastructure used by this system can be divided into 2 categories:
 - **permanent infra**: message queues, databases, and service accounts. These objects are setup once in GCP and can run forever at no cost.
 
 - **per-run infra**: compute instances. These objects are setup for each test run and are destroyed after the test run finishes.
   By default these resources will fit into the GCP free tier, though the system can be configured to use different instance sizes that may incur additional costs.
 
 
-### Terraform and GCP project Setup
+### 1-time Terraform and GCP project Setup
 
   1. Install terraform from [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
   1. Create a new GCP project.
@@ -27,37 +27,50 @@ The comnpute infrastructure used by this system can be divided into 2 categories
     - [Compute Engine API](https://console.cloud.google.com/apis/library/compute.googleapis.com)
     - [Google Cloud Firestore API](https://console.cloud.google.com/apis/library/firestore.googleapis.com)
     - [App Engine Admin API](https://console.cloud.google.com/apis/library/appengine.googleapis.com)
+    - [Artifact Registry API](https://console.cloud.google.com/marketplace/product/google/artifactregistry.googleapis.com)
+      Needed for creating/storing/loading docker images for the superset frontend
+    - [Cloud Run API](https://console.cloud.google.com/apis/library/run.googleapis.com)
+      Needed for running the superset frontend
   1. Create service account on IAM -> Service Account -> Create Service Account.
   1. Create a key for the service account. From the service account, select Keys -> Add Key -> Create new key -> Json
   1. Move the downloaded service account key to the terraform directory and rename it to `cred.json`.
   1. Assign the role Basic -> Owner to the new service account. This is done on IAM -> Manage Resources -> YOUR_PROJECT_NAME -> Add Principal. Add the email of the service account and select role "Basic -> Owner".
      The Owner (rather than Editor) role is required to create the firestore that holds test results.
+  1. Install and run docker on your computer
   1. In the terraform directory, run:
+        ```
+        $ terraform init
+        $ terraform apply
+        ```
   
-    $ terraform init
-    $ terraform apply
-  
-
 Terraform will create all the permanent infrastructure required by the test runner. This infra fits within the GCP 
-free tier and can run forever at no cost.
+'free forever' tier and can run forever at no cost.
+
+### Backend
+The test-runner-backend directory of this project is the home of a service for running
 
 ### Github Project Configuration
 These steps integrate the graphql-java-test-runner automation into a graphql-java repo. 
 They can be applied to both the main repo ([graphql-java/graphql-java](https://github.com/graphql-java/graphql-java)) and forks of that repo.
 
-1. Install workflow into graphql-java repo:
+1. Install the test-runner workflow into the graphql-java repo:
     ```
     $ cd path/to/graphql-java
     $ rsync -rv path/to/graphql-java-test-runner/dot-github/ .github/
     $ git commit -a -m 'installing graphql-java-test-runner workflow'
     ```
    
-1. Configure the graphql-java github repo. In the github settings page for the graphql-java, repo, add these secrets:
+1. Configure the graphql-java github repo. In the github settings page for the graphql-java, repo, add these variables:
+   - `GJ_TEST_RUNNER_GIT_URL` - the git url for the repo containing the graphql-java-test-runner code. 
+   
+     You can use the url of this repo, `git@github.com:jbellenger/graphql-java-test-runner.git`
+   
    - `GOOGLE_CLOUD_PROJECT_ID` - the human-friendly name of your GCP project
    - `GOOGLE_CLOUD_PROJECT_NUMBER` - the numeric id of your GCP project. This can be seen in the IAM page as the numeric
      username for your service accounts
-![Screenshot 2023-03-19 at 10.39.47 AM.png!small](static/gcp-project-config.png)
+    ![Screenshot 2023-03-19 at 10.39.47 AM.png!small](static/gcp-project-config.png)
 
+At this point, you should be able to trigger a run of the graphql-java
 
 ### React App
 

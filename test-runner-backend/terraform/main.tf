@@ -8,8 +8,13 @@ terraform {
 
 locals {
   cred  = file("cred.json")
-  project_id = jsondecode(local.cred).project_id
-  email = jsondecode(local.cred).client_email
+	credjson = jsondecode(local.cred)
+  project_id = local.credjson.project_id
+  email = local.credjson.client_email
+
+	superset_local_image = "apache/superset:${var.superset_docker_tag}"
+	superset_remote_image = "${var.region}-docker.pkg.dev/${local.project_id}/repo/superset:${var.superset_docker_tag}"
+	superset_secret_key = local.credjson.private_key
 }
 
 provider "google" {
@@ -20,15 +25,17 @@ provider "google" {
 }
 
 # Define and deploy a workflow
-resource "google_workflows_workflow" "test_runner_workflow" {
-  name            = "test-runner-workflow-v2"
-  region          = var.region
-  description     = "Test runner workflow"
-  service_account = local.email
-  source_contents = file("workflow.yaml")
-
-  depends_on = [google_project_service.workflows]
-}
+# JMB TODO: not sure this is needed, plus it fails because it can't find
+# workflow.yaml -- I think I might have moved it somewhere
+# resource "google_workflows_workflow" "test_runner_workflow" {
+#   name            = "test-runner-workflow-v2"
+#   region          = var.region
+#   description     = "Test runner workflow"
+#   service_account = local.email
+#   source_contents = file("workflow.yaml")
+# 
+#   depends_on = [google_project_service.workflows]
+# }
 
 # Define and deploy a tasks queue
 # Queue should not be named the same as any other queue created 7 days before within the same GCP account. It will throw an error.
@@ -74,4 +81,102 @@ resource "google_compute_firewall" "rules" {
   target_tags   = ["web"]
 
   depends_on    = [google_project_service.compute_engine_api]
+}
+
+
+## 
+## DOCKER CONTAINER REGISTRY
+##
+resource "google_artifact_registry_repository" "repo" {
+  project       = local.project_id
+  location      = var.region
+	format        = "DOCKER"
+	repository_id = "repo"
+}
+
+data "google_iam_policy" "admin" {
+	binding {
+		role = "roles/artifactregistry.admin"
+    members = [
+      "serviceAccount:${local.email}"
+    ]
+	}
+}
+ 
+resource "google_artifact_registry_repository_iam_policy" "policy" {
+  project = google_artifact_registry_repository.repo.project
+  location = google_artifact_registry_repository.repo.location
+  repository = google_artifact_registry_repository.repo.name
+
+  policy_data = data.google_iam_policy.admin.policy_data
+}
+
+
+## 
+## SUPERSET DOCKER IMAGE PUBLISHING
+##
+resource "null_resource" "pull_and_push_superset" {
+
+  provisioner "local-exec" {
+    command = <<-EOT
+			gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://${var.region}-docker.pkg.dev
+      docker pull ${local.superset_local_image}
+      docker tag ${local.superset_local_image} ${local.superset_remote_image}
+      docker push ${local.superset_remote_image}
+    EOT
+  }
+  depends_on = [
+    google_artifact_registry_repository.repo,
+  ]
+}
+
+
+##
+## RUN SUPERSET FRONTEND
+##
+resource "google_cloud_run_service" "superset" {
+  name     = "cloudrun-superset"
+  location = var.region
+
+  template {
+    spec {
+      containers {
+        image = local.superset_remote_image
+				env {
+					name = "SUPERSET_SECRET_KEY"
+					value = local.credjson.private_key
+				}
+				ports {
+					container_port = 8088 
+				}
+      }
+    }
+  }
+
+  traffic {
+    percent         = 100
+    latest_revision = true
+  }
+
+	depends_on = [
+		null_resource.pull_and_push_superset,
+	]
+}
+
+data "google_iam_policy" "noauth" {
+  binding {
+    role = "roles/run.invoker"
+    members = [
+      "allUsers",
+    ]
+  }
+}
+
+resource "google_cloud_run_service_iam_policy" "noauth" {
+  location    = google_cloud_run_service.superset.location
+  project     = google_cloud_run_service.superset.project
+  service     = google_cloud_run_service.superset.name
+
+  policy_data = data.google_iam_policy.noauth.policy_data
+
 }
