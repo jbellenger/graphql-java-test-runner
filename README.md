@@ -23,14 +23,6 @@ The compute infrastructure used by this system can be divided into 2 categories:
   1. Install terraform from [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
   1. Create a new GCP project.
   1. Add a billing account to the above created project.
-  1. Enable these services on the project (APIs & Services -> Library):
-    - [Compute Engine API](https://console.cloud.google.com/apis/library/compute.googleapis.com)
-    - [Google Cloud Firestore API](https://console.cloud.google.com/apis/library/firestore.googleapis.com)
-    - [App Engine Admin API](https://console.cloud.google.com/apis/library/appengine.googleapis.com)
-    - [Artifact Registry API](https://console.cloud.google.com/marketplace/product/google/artifactregistry.googleapis.com)
-      Needed for creating/storing/loading docker images for the superset frontend
-    - [Cloud Run API](https://console.cloud.google.com/apis/library/run.googleapis.com)
-      Needed for running the superset frontend
   1. Create service account on IAM -> Service Account -> Create Service Account.
   1. Create a key for the service account. From the service account, select Keys -> Add Key -> Create new key -> Json
   1. Move the downloaded service account key to the terraform directory and rename it to `cred.json`.
@@ -46,12 +38,26 @@ The compute infrastructure used by this system can be divided into 2 categories:
 Terraform will create all the permanent infrastructure required by the test runner. This infra fits within the GCP 
 'free forever' tier and can run forever at no cost.
 
+After terraform has finished running, you'll need to fetch the key of the service account that is used to post test results from github:
+```
+$ gcloud iam service-accounts keys create results-publisher-key.json --iam-account=results-publisher@gj-perf.iam.gserviceaccount.com
+```
+This will create a results-publisher-key.json file 
+
 ### Backend
 The test-runner-backend directory of this project is the home of a service for running
 
 ### Github Project Configuration
 These steps integrate the graphql-java-test-runner automation into a graphql-java repo. 
 They can be applied to both the main repo ([graphql-java/graphql-java](https://github.com/graphql-java/graphql-java)) and forks of that repo.
+   
+1. Configure the graphql-java github repo. In the github settings page for the graphql-java repo, add these repository secrets:
+   - `GOOGLE_CLOUD_PROJECT_ID` - the human-friendly name of your GCP project
+   - `GOOGLE_CLOUD_PROJECT_NUMBER` - the numeric id of your GCP project. This can be seen in the IAM page as the numeric
+     username for your service accounts
+    ![Screenshot 2023-03-19 at 10.39.47 AM.png!small](static/gcp-project-config.png)
+   - `GOOGLE_CLOUD_CREDS` - the contents of the results-publisher-key.json file created in the previous section.
+
 
 1. Install the test-runner workflow into the graphql-java repo:
     ```
@@ -59,16 +65,6 @@ They can be applied to both the main repo ([graphql-java/graphql-java](https://g
     $ rsync -rv path/to/graphql-java-test-runner/dot-github/ .github/
     $ git commit -a -m 'installing graphql-java-test-runner workflow'
     ```
-   
-1. Configure the graphql-java github repo. In the github settings page for the graphql-java, repo, add these variables:
-   - `GJ_TEST_RUNNER_GIT_URL` - the git url for the repo containing the graphql-java-test-runner code. 
-   
-     You can use the url of this repo, `git@github.com:jbellenger/graphql-java-test-runner.git`
-   
-   - `GOOGLE_CLOUD_PROJECT_ID` - the human-friendly name of your GCP project
-   - `GOOGLE_CLOUD_PROJECT_NUMBER` - the numeric id of your GCP project. This can be seen in the IAM page as the numeric
-     username for your service accounts
-    ![Screenshot 2023-03-19 at 10.39.47 AM.png!small](static/gcp-project-config.png)
 
 At this point, you should be able to trigger a run of the graphql-java
 

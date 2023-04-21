@@ -5,11 +5,11 @@ resource "google_project_service" "cloud_manager_api" {
 }
 
 # Enable Workflows API
-resource "google_project_service" "workflows" {
-  service                    = "workflows.googleapis.com"
-  disable_dependent_services = true
-  depends_on                 = [google_project_service.cloud_manager_api]
-}
+# resource "google_project_service" "workflows" {
+#   service                    = "workflows.googleapis.com"
+#   disable_dependent_services = true
+#   depends_on                 = [google_project_service.cloud_manager_api]
+# }
 
 # Enable AppEngine API - required to create datastore
 resource "google_project_service" "app_engine_api" {
@@ -18,22 +18,48 @@ resource "google_project_service" "app_engine_api" {
   depends_on                 = [google_project_service.cloud_manager_api]
 }
 
+# JMB TODO: I think this isn't needed if we're running in cloud run
 # Enable ComputeEngine API - required to create compute engine instance
-resource "google_project_service" "compute_engine_api" {
-  service                    = "compute.googleapis.com"
+# resource "google_project_service" "compute_engine_api" {
+#   service                    = "compute.googleapis.com"
+#   disable_dependent_services = true
+#   depends_on                 = [google_project_service.cloud_manager_api]
+# }
+
+# JMB TODO: let's see if we can use BQ on superset
+# # Enable Cloud Firestore API - required to communicate to firestore via workflow and test-runner
+# resource "google_project_service" "firestore_api" {
+#   service                    = "firestore.googleapis.com"
+#   disable_dependent_services = true
+# }
+
+# JMB TODO: why is this needed? Also repeated above
+# resource "google_project_service" "compute_api" {
+#   service                    = "compute.googleapis.com"
+#   disable_dependent_services = true
+# }
+
+# Enable BigQuery API - required for storing benchmark results
+resource "google_project_service" "bigquery_api" {
+  service                    = "bigquery.googleapis.com"
   disable_dependent_services = true
-  depends_on                 = [google_project_service.cloud_manager_api]
 }
 
-# Enable Cloud Tasks Queue API - required to create a queue
-resource "google_project_service" "cloud_tasks_api" {
-  service                    = "cloudtasks.googleapis.com"
+# Enable ArtifactRegistry - required for managing docker containers for apache superset
+resource "google_project_service" "artifactregistry_api" {
+  service                    = "artifactregistry.googleapis.com"
   disable_dependent_services = true
-  depends_on                 = [google_project_service.cloud_manager_api]
 }
 
-# Enable Cloud Firestore API - required to communicate to firestore via workflow and test-runner
-resource "google_project_service" "firestore" {
-  service                    = "firestore.googleapis.com"
+# Enable CloudRun - required for running apache superset docker container
+resource "google_project_service" "run_api" {
+  service                    = "run.googleapis.com"
+  disable_dependent_services = true
+}
+
+# Enable IAM - required for creating specialized service accounts for reading/writing 
+# benchmark results
+resource "google_project_service" "iam_api" {
+  service                    = "iam.googleapis.com"
   disable_dependent_services = true
 }
