@@ -56,7 +56,7 @@ They can be applied to both the main repo ([graphql-java/graphql-java](https://g
    - `GOOGLE_CLOUD_PROJECT_NUMBER` - the numeric id of your GCP project. This can be seen in the IAM page as the numeric
      username for your service accounts
     ![Screenshot 2023-03-19 at 10.39.47 AM.png!small](static/gcp-project-config.png)
-   - `GOOGLE_CLOUD_CREDS` - the contents of the results-publisher-key.json file created in the previous section.
+   - `GOOGLE_CLOUD_CREDS` - the contents of the results-publisher-key.json file created in the previous section. The file can be deleted after its contents are pasted into github.
 
 
 1. Install the test-runner workflow into the graphql-java repo:

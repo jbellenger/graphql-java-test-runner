@@ -8,13 +8,13 @@ terraform {
 
 locals {
   cred  = file("cred.json")
-	credjson = jsondecode(local.cred)
+  credjson = jsondecode(local.cred)
   project_id = local.credjson.project_id
   email = local.credjson.client_email
 
-	superset_local_image = "apache/superset:${var.superset_docker_tag}"
-	superset_remote_image = "${var.region}-docker.pkg.dev/${local.project_id}/repo/superset:${var.superset_docker_tag}"
-	superset_secret_key = local.credjson.private_key
+  superset_local_image = "apache/superset:${var.superset_docker_tag}"
+  superset_remote_image = "${var.region}-docker.pkg.dev/${local.project_id}/repo/superset:${var.superset_docker_tag}"
+  superset_secret_key = local.credjson.private_key
 }
 
 provider "google" {
@@ -131,12 +131,18 @@ resource "google_service_account" "results_publisher" {
   depends_on = [google_project_service.iam_api]
 }
 
-# JMB TODO: not needed if we use bigquery
-resource "google_project_iam_member" "results_publisher_firestore_iam" {
+resource "google_project_iam_member" "results_publisher_bigquery_iam" {
   project = local.project_id
-  role    = "roles/firestore.serviceAgent"
+  role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.results_publisher.email}"
 }
+
+# JMB TODO: not needed if we use bigquery
+# resource "google_project_iam_member" "results_publisher_firestore_iam" {
+#   project = local.project_id
+#   role    = "roles/firestore.serviceAgent"
+#   member  = "serviceAccount:${google_service_account.results_publisher.email}"
+# }
 
 
 ## 
@@ -145,19 +151,19 @@ resource "google_project_iam_member" "results_publisher_firestore_iam" {
 resource "google_artifact_registry_repository" "repo" {
   project       = local.project_id
   location      = var.region
-	format        = "DOCKER"
-	repository_id = "repo"
+  format        = "DOCKER"
+  repository_id = "repo"
 
   depends_on = [google_project_service.artifactregistry_api]
 }
 
 data "google_iam_policy" "admin" {
-	binding {
-		role = "roles/artifactregistry.admin"
+  binding {
+    role = "roles/artifactregistry.admin"
     members = [
       "serviceAccount:${local.email}"
     ]
-	}
+  }
 }
  
 resource "google_artifact_registry_repository_iam_policy" "policy" {
@@ -176,7 +182,7 @@ resource "google_artifact_registry_repository_iam_policy" "policy" {
 # 
 #   provisioner "local-exec" {
 #     command = <<-EOT
-# 			gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://${var.region}-docker.pkg.dev
+#       gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://${var.region}-docker.pkg.dev
 #       docker pull ${local.superset_local_image}
 #       docker tag ${local.superset_local_image} ${local.superset_remote_image}
 #       docker push ${local.superset_remote_image}
@@ -199,13 +205,13 @@ resource "google_artifact_registry_repository_iam_policy" "policy" {
 #     spec {
 #       containers {
 #         image = local.superset_remote_image
-# 				env {
-# 					name = "SUPERSET_SECRET_KEY"
-# 					value = local.credjson.private_key
-# 				}
-# 				ports {
-# 					container_port = 8088 
-# 				}
+#         env {
+#           name = "SUPERSET_SECRET_KEY"
+#           value = local.credjson.private_key
+#         }
+#         ports {
+#           container_port = 8088 
+#         }
 #       }
 #     }
 #   }
@@ -215,10 +221,10 @@ resource "google_artifact_registry_repository_iam_policy" "policy" {
 #     latest_revision = true
 #   }
 # 
-# 	depends_on = [
-# 		null_resource.pull_and_push_superset,
+#   depends_on = [
+#     null_resource.pull_and_push_superset,
 #     google_project_service.run_api
-# 	]
+#   ]
 # }
 # 
 # data "google_iam_policy" "noauth" {
