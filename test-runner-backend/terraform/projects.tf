@@ -4,13 +4,6 @@ resource "google_project_service" "cloud_manager_api" {
   disable_dependent_services = true
 }
 
-# Enable Workflows API
-# resource "google_project_service" "workflows" {
-#   service                    = "workflows.googleapis.com"
-#   disable_dependent_services = true
-#   depends_on                 = [google_project_service.cloud_manager_api]
-# }
-
 # Enable AppEngine API - required to create datastore
 resource "google_project_service" "app_engine_api" {
   service                    = "appengine.googleapis.com"
@@ -18,24 +11,10 @@ resource "google_project_service" "app_engine_api" {
   depends_on                 = [google_project_service.cloud_manager_api]
 }
 
-# JMB TODO: I think this isn't needed if we're running in cloud run
-# Enable ComputeEngine API - required to create compute engine instance
-# resource "google_project_service" "compute_engine_api" {
-#   service                    = "compute.googleapis.com"
-#   disable_dependent_services = true
-#   depends_on                 = [google_project_service.cloud_manager_api]
-# }
-
 # JMB TODO: let's see if we can use BQ on superset
 # # Enable Cloud Firestore API - required to communicate to firestore via workflow and test-runner
 # resource "google_project_service" "firestore_api" {
 #   service                    = "firestore.googleapis.com"
-#   disable_dependent_services = true
-# }
-
-# JMB TODO: why is this needed? Also repeated above
-# resource "google_project_service" "compute_api" {
-#   service                    = "compute.googleapis.com"
 #   disable_dependent_services = true
 # }
 

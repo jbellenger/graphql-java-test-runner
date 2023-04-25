@@ -24,18 +24,6 @@ provider "google" {
   zone        = "us-central1-c"
 }
 
-# Define and deploy a workflow
-# JMB TODO: not sure this is needed, plus it fails because it can't find
-# workflow.yaml -- I think I might have moved it somewhere
-# resource "google_workflows_workflow" "test_runner_workflow" {
-#   name            = "test-runner-workflow-v2"
-#   region          = var.region
-#   description     = "Test runner workflow"
-#   service_account = local.email
-#   source_contents = file("workflow.yaml")
-# 
-#   depends_on = [google_project_service.workflows]
-# }
 
 # Create Firestore, this operation will be successful when initializing
 # the project for the first time. Firestore once created can never be destroyed on the same project.
@@ -99,10 +87,28 @@ resource "google_bigquery_table" "runs" {
   schema = <<-EOT
     [
       {
-        "name": "gitsha",
+        "name": "id",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "identifier for this test run"
+      },
+      {
+        "name": "suite",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "free-form label for the jmh suite that was run"
+      },
+      {
+        "name": "git_sha",
         "type": "STRING",
         "mode": "NULLABLE",
         "description": "git sha that the test results were run against"
+      },
+      {
+        "name": "git_branch",
+        "type": "STRING",
+        "mode": "NULLABLE",
+        "description": "git branch that the test results were run against"
       },
       {
         "name": "jmh_json",
@@ -131,18 +137,18 @@ resource "google_service_account" "results_publisher" {
   depends_on = [google_project_service.iam_api]
 }
 
-resource "google_project_iam_member" "results_publisher_bigquery_iam" {
+resource "google_project_iam_member" "results_publisher_bigquery_user" {
+  project = local.project_id
+  role    = "roles/bigquery.user"
+  member  = "serviceAccount:${google_service_account.results_publisher.email}"
+}
+
+resource "google_project_iam_member" "results_publisher_bigquery_jobUser" {
   project = local.project_id
   role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.results_publisher.email}"
 }
 
-# JMB TODO: not needed if we use bigquery
-# resource "google_project_iam_member" "results_publisher_firestore_iam" {
-#   project = local.project_id
-#   role    = "roles/firestore.serviceAgent"
-#   member  = "serviceAccount:${google_service_account.results_publisher.email}"
-# }
 
 
 ## 
